@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cellular Automata Lab // life-lab.slippylabs.com</title>
+<meta name="description" content="Conway's Game of Life and any other B/S rule you can name — draw cells, drop in gliders and guns, watch the population, and export what you built as RLE. Runs entirely in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://life-lab.slippylabs.com/">
+<meta property="og:title" content="Cellular Automata Lab // life-lab.slippylabs.com">
+<meta property="og:description" content="Conway's Game of Life and any other B/S rule you can name — draw cells, drop in gliders and guns, watch the population, and export what you built as RLE. Runs entirely in your browser.">
+<meta property="og:image" content="https://life-lab.slippylabs.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cellular Automata Lab // life-lab.slippylabs.com">
+<meta name="twitter:description" content="Conway's Game of Life and any other B/S rule you can name — draw cells, drop in gliders and guns, watch the population, and export what you built as RLE. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://life-lab.slippylabs.com/og-image.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234%22%20r%3D%2222%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#050b10">
+<link rel="stylesheet" href="style.css?v=1">
+<script>/* perf-lite: drop blend/blur effects on low-power devices. ?fx=lite or ?fx=full to override (persisted). */
+(function(){try{var k="slippy-fx",m=location.search.match(/[?&]fx=(lite|full)/),v=m?m[1]:localStorage.getItem(k);if(m)localStorage.setItem(k,v);if(v==="lite"||(v!=="full"&&(navigator.hardwareConcurrency||8)<=2))document.documentElement.classList.add("perf-lite");}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="scanlines"></div>
+
+<main class="page-wrap">
+  <div class="hud-panel wide">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
+    <div class="callsign-row">
+      <div class="toad-avatar-wrap">
+        <svg class="toad-avatar" width="46" height="46" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="lock-reticle"></div>
+      </div>
+      <span class="callsign">Workshop Division // Tool</span>
+      <div class="nav-links">
+        <a href="https://projects.slippylabs.com/" class="logout-link">← Archive</a>
+      </div>
+    </div>
+
+
+    <h1>CELLULAR AUTOMATA LAB</h1>
+    <p class="subtitle">Any rule of the form <code>B3/S23</code>: which neighbour counts make a cell appear, and which let it live. Change two digits and Life becomes a maze generator, a crystal, or something that eats itself.</p>
+
+    <div class="la-controls">
+      <div class="tool-field-row">
+        <label class="tool-field-label" for="rule-preset">Rule</label>
+        <select class="tool-select" id="rule-preset"></select>
+      </div>
+      <div class="tool-field-row">
+        <label class="tool-field-label" for="rule-input">Rulestring</label>
+        <input class="tool-text-input" id="rule-input" type="text" spellcheck="false"
+               autocapitalize="off" autocomplete="off" value="B3/S23">
+      </div>
+      <div class="tool-field-row">
+        <label class="tool-field-label" for="pattern-select">Drop in a pattern</label>
+        <select class="tool-select" id="pattern-select"></select>
+      </div>
+      <div class="tool-field-row">
+        <label class="tool-field-label" for="edge-select">Edges</label>
+        <select class="tool-select" id="edge-select">
+          <option value="wrap" selected>Wrap around (torus)</option>
+          <option value="dead">Dead border</option>
+        </select>
+      </div>
+    </div>
+    <p class="tool-note" id="rule-error" role="alert"></p>
+
+    <div class="tool-controls">
+      <button class="tool-btn" id="run-btn">&#9654; Run</button>
+      <button class="tool-btn ghost" id="step-btn">Step</button>
+      <button class="tool-btn ghost" id="reset-btn">Reset</button>
+      <button class="tool-btn ghost" id="clear-btn">Clear</button>
+      <button class="tool-btn ghost" id="soup-btn">Random Soup</button>
+    </div>
+
+    <div class="la-sliders">
+      <div>
+        <label class="tool-field-label" for="speed-slider">Speed — generations per second</label>
+        <div class="tool-slider-row">
+          <input type="range" id="speed-slider" min="1" max="61" value="20">
+          <span class="la-slider-value" id="speed-value">20</span>
+        </div>
+      </div>
+      <div>
+        <label class="tool-field-label" for="cell-slider">Cell size</label>
+        <div class="tool-slider-row">
+          <input type="range" id="cell-slider" min="2" max="16" value="8">
+          <span class="la-slider-value" id="cell-value">8</span>
+        </div>
+      </div>
+      <div>
+        <label class="tool-field-label" for="density-slider">Soup density</label>
+        <div class="tool-slider-row">
+          <input type="range" id="density-slider" min="5" max="80" value="32">
+          <span class="la-slider-value" id="density-value">32%</span>
+        </div>
+      </div>
+      <div>
+        <label class="tool-field-label" for="size-select">Grid</label>
+        <select class="tool-select" id="size-select">
+          <option value="64x48">64 × 48</option>
+          <option value="96x64" selected>96 × 64</option>
+          <option value="128x96">128 × 96</option>
+          <option value="192x128">192 × 128</option>
+          <option value="256x192">256 × 192</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="tool-note">
+      Drag on the grid to draw, hold <kbd>Shift</kbd> (or use the right button) to erase. Drawing
+      while it runs is allowed &mdash; that is half the fun.
+    </p>
+
+    <div class="la-canvas-wrap">
+      <canvas id="life-canvas" width="96" height="64"></canvas>
+    </div>
+
+    <div class="net-grid" id="stat-host"></div>
+
+    <div class="cert-section-label">Population history</div>
+    <canvas id="spark-canvas" class="la-spark" width="900" height="120"></canvas>
+    <p class="tool-note" id="verdict-note"></p>
+
+    <div class="cert-section-label">RLE</div>
+    <p class="tool-note">
+      The interchange format every Life catalogue uses: run-lengths of <code>b</code> dead and
+      <code>o</code> alive, <code>$</code> for end of row, <code>!</code> for end of pattern. Paste
+      anything from a pattern collection in here, or copy what you built out.
+    </p>
+    <textarea class="tool-textarea" id="rle-text" spellcheck="false" rows="5"></textarea>
+    <div class="tool-controls">
+      <button class="tool-btn" id="rle-load-btn">Load RLE</button>
+      <button class="tool-btn ghost" id="rle-save-btn">Export Current</button>
+      <button class="tool-btn ghost" id="rle-copy-btn">Copy</button>
+      <span class="copy-toast" id="copy-toast">copied</span>
+    </div>
+    <p class="tool-note" id="rle-error" role="alert"></p>
+
+    <p class="tool-note">
+      Every rule here is a two-state, 8-neighbour (Moore) outer-totalistic rule, which is the family
+      Conway's Life belongs to. A repeat of an earlier generation is detected by hashing each state,
+      so a still life, a blinker or a period-15 oscillator names itself once it settles &mdash; a
+      pattern that never repeats simply never triggers it.
+    </p>
+    <div class="comm-window">
+      <div class="comm-portrait">
+        <svg width="36" height="36" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="comm-body">
+        <div class="comm-label"><span class="dot"></span> Incoming Transmission &mdash; Slippy</div>
+        <p>&quot;Four rules, no randomness, and nobody can tell you what happens on turn 10,000 without running it.&quot;</p>
+      </div>
+    </div>
+
+    <a href="https://projects.slippylabs.com/" class="hud-btn">← Back to Archive</a>
+  </div>
+</main>
+
+
+<script>
+/* ---- automaton core -------------------------------------------------------
+   A grid is one Uint8Array of W*H bytes, 1 for alive. A rule is two tables of
+   nine booleans: birth[k] for a dead cell with k live neighbours, survive[k]
+   for a live one. Conway's Life is B3/S23 and nothing in here is special-cased
+   for it. Patterns are stored as plaintext rows (".O") rather than RLE because
+   a row of dots is readable at a glance, and readable is how a pattern stays
+   correct; RLE is parsed and written for interchange only. */
+
+function parseRule(text) {
+  const s = String(text).trim().toUpperCase().replace(/\s+/g, '');
+  if (!s) throw new Error('Type a rule like B3/S23');
+  let birthStr;
+  let surviveStr;
+  let m = /^B([0-8]*)\/S([0-8]*)$/.exec(s);
+  if (m) { birthStr = m[1]; surviveStr = m[2]; }
+  else if ((m = /^S([0-8]*)\/B([0-8]*)$/.exec(s))) { surviveStr = m[1]; birthStr = m[2]; }
+  else if ((m = /^([0-8]*)\/([0-8]*)$/.exec(s)) && (m[1] || m[2])) {
+    // The older "23/3" convention: survivals first, then births. At least one
+    // digit is required — a bare "/" is a typo, not the rule where nothing
+    // lives (spell that one "B/S", which the branch above accepts).
+    surviveStr = m[1];
+    birthStr = m[2];
+  } else {
+    throw new Error(`"${text}" is not a rule — try B3/S23, or 23/3`);
+  }
+  const birth = new Array(9).fill(false);
+  const survive = new Array(9).fill(false);
+  for (const c of birthStr) birth[Number(c)] = true;
+  for (const c of surviveStr) survive[Number(c)] = true;
+  return { birth, survive, text: formatRule({ birth, survive }) };
+}
+
+function formatRule(rule) {
+  const b = rule.birth.map((v, i) => (v ? i : '')).join('');
+  const s = rule.survive.map((v, i) => (v ? i : '')).join('');
+  return `B${b}/S${s}`;
+}
+
+/* One generation. Written as an explicit neighbour sum rather than anything
+   clever: the wrap case needs a modulo per axis and the dead-border case needs
+   a bounds test, and conflating them is how off-by-one bugs at the edge get in. */
+function stepGrid(cells, w, h, rule, wrap) {
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          let nx = x + dx;
+          let ny = y + dy;
+          if (wrap) {
+            nx = nx < 0 ? w - 1 : nx === w ? 0 : nx;
+            ny = ny < 0 ? h - 1 : ny === h ? 0 : ny;
+          } else if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          n += cells[ny * w + nx];
+        }
+      }
+      const i = y * w + x;
+      out[i] = cells[i] ? (rule.survive[n] ? 1 : 0) : (rule.birth[n] ? 1 : 0);
+    }
+  }
+  return out;
+}
+
+function population(cells) {
+  let n = 0;
+  for (let i = 0; i < cells.length; i++) n += cells[i];
+  return n;
+}
+
+/* A 53-bit hash, built from two independent FNV-1a passes over the live cells.
+   32 bits alone is not enough: a long run would hit a birthday collision and
+   invent an oscillator that is not there. */
+function hashGrid(cells) {
+  let a = 0x811c9dc5;
+  let b = 0x01000193;
+  for (let i = 0; i < cells.length; i++) {
+    const v = cells[i];
+    a = ((a ^ (v + (i & 0xff))) * 16777619) >>> 0;
+    if (v) b = ((b ^ i) * 2166136261) >>> 0;
+  }
+  return a * 4194304 + (b & 0x3fffff);
+}
+
+/* -- plaintext patterns ---------------------------------------------------- */
+
+function cellsFromPlain(rows) {
+  const lines = rows.trim().split('\n').map((l) => l.trimEnd());
+  const w = Math.max(...lines.map((l) => l.length));
+  const h = lines.length;
+  const out = [];
+  lines.forEach((line, y) => {
+    for (let x = 0; x < line.length; x++) if (line[x] === 'O' || line[x] === '*') out.push([x, y]);
+  });
+  return { w, h, cells: out };
+}
+
+const PATTERNS = [
+  { name: 'Glider', rule: 'B3/S23', plain: '.O.\n..O\nOOO' },
+  { name: 'Lightweight spaceship', rule: 'B3/S23', plain: '.O..O\nO....\nO...O\nOOOO.' },
+  { name: 'Blinker', rule: 'B3/S23', plain: 'OOO' },
+  { name: 'Toad', rule: 'B3/S23', plain: '.OOO\nOOO.' },
+  { name: 'Beacon', rule: 'B3/S23', plain: 'OO..\nOO..\n..OO\n..OO' },
+  { name: 'Pulsar', rule: 'B3/S23', plain: [
+    '..OOO...OOO..', '.............', 'O....O.O....O', 'O....O.O....O',
+    'O....O.O....O', '..OOO...OOO..', '.............', '..OOO...OOO..',
+    'O....O.O....O', 'O....O.O....O', 'O....O.O....O', '.............',
+    '..OOO...OOO..'].join('\n') },
+  { name: 'Penta-decathlon', rule: 'B3/S23', plain: '..O....O..\nOO.OOOO.OO\n..O....O..' },
+  { name: 'R-pentomino', rule: 'B3/S23', plain: '.OO\nOO.\n.O.' },
+  { name: 'Acorn', rule: 'B3/S23', plain: '.O.....\n...O...\nOO..OOO' },
+  { name: 'Diehard', rule: 'B3/S23', plain: '......O.\nOO......\n.O...OOO' },
+  { name: 'Gosper glider gun', rule: 'B3/S23', plain: [
+    '........................O...........',
+    '......................O.O...........',
+    '............OO......OO............OO',
+    '...........O...O....OO............OO',
+    'OO........O.....O...OO..............',
+    'OO........O...O.OO....O.O...........',
+    '..........O.....O.......O...........',
+    '...........O...O....................',
+    '............OO......................'].join('\n') },
+  { name: 'Replicator seed', rule: 'B1357/S1357', plain: '.O.\nO.O\n.O.' },
+  { name: 'Seeds dot', rule: 'B2/S', plain: 'OO' },
+];
+
+const RULES = [
+  { name: "Conway's Life", rule: 'B3/S23' },
+  { name: 'HighLife', rule: 'B36/S23' },
+  { name: 'Day & Night', rule: 'B3678/S34678' },
+  { name: 'Seeds', rule: 'B2/S' },
+  { name: 'Replicator', rule: 'B1357/S1357' },
+  { name: 'Diamoeba', rule: 'B35678/S5678' },
+  { name: 'Maze', rule: 'B3/S12345' },
+  { name: 'Mazectric', rule: 'B3/S1234' },
+  { name: 'Coral', rule: 'B3/S45678' },
+  { name: 'Life without Death', rule: 'B3/S012345678' },
+  { name: '2×2', rule: 'B36/S125' },
+  { name: 'Anneal', rule: 'B4678/S35678' },
+  { name: 'Vote', rule: 'B5678/S45678' },
+];
+
+/* -- RLE ------------------------------------------------------------------- */
+
+function parseRLE(text) {
+  const lines = String(text).split(/\r?\n/);
+  let rule = null;
+  let declaredW = null;
+  let declaredH = null;
+  const body = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const head = /^x\s*=\s*(\d+)\s*,\s*y\s*=\s*(\d+)\s*(?:,\s*rule\s*=\s*([^\s,]+))?/i.exec(t);
+    if (head && declaredW === null) {
+      declaredW = Number(head[1]);
+      declaredH = Number(head[2]);
+      if (head[3]) rule = head[3];
+      continue;
+    }
+    body.push(t);
+  }
+  const src = body.join('');
+  if (!src) throw new Error('No pattern data found');
+  const cells = [];
+  let x = 0;
+  let y = 0;
+  let count = '';
+  let maxX = 0;
+  for (const ch of src) {
+    if (ch >= '0' && ch <= '9') { count += ch; continue; }
+    const n = count ? Number(count) : 1;
+    count = '';
+    if (ch === 'b' || ch === '.') x += n;
+    else if (ch === 'o' || ch === 'O' || ch === '*') {
+      for (let k = 0; k < n; k++) cells.push([x + k, y]);
+      x += n;
+    } else if (ch === '$') { maxX = Math.max(maxX, x); y += n; x = 0; }
+    else if (ch === '!') break;
+    else if (/\s/.test(ch)) continue;
+    else throw new Error(`Unexpected "${ch}" in the RLE body`);
+  }
+  maxX = Math.max(maxX, x);
+  const w = declaredW ?? maxX;
+  const h = declaredH ?? (cells.length ? Math.max(...cells.map((c) => c[1])) + 1 : y + 1);
+  return { w, h, rule, cells };
+}
+
+function toRLE(cells, w, h, ruleText) {
+  // Trim to the live bounding box: a pattern is its cells, not its canvas.
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!cells[y * w + x]) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0) return `x = 0, y = 0, rule = ${ruleText}\n!`;
+  const bw = maxX - minX + 1;
+  const bh = maxY - minY + 1;
+  const parts = [];
+  let run = 0;
+  let runChar = '';
+  const flush = () => {
+    if (!run) return;
+    parts.push((run > 1 ? String(run) : '') + runChar);
+    run = 0;
+  };
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const ch = cells[y * w + x] ? 'o' : 'b';
+      if (ch === runChar) run++;
+      else { flush(); runChar = ch; run = 1; }
+    }
+    flush();
+    // trailing dead cells carry no information, so drop them before the $
+    while (parts.length && /b$/.test(parts[parts.length - 1])) parts.pop();
+    if (y < maxY) { parts.push('$'); runChar = ''; }
+  }
+  parts.push('!');
+  // wrap at 70 columns, which is what the format's own convention asks for
+  let out = '';
+  let col = 0;
+  for (const p of parts) {
+    if (col + p.length > 70) { out += '\n'; col = 0; }
+    out += p;
+    col += p.length;
+  }
+  return `x = ${bw}, y = ${bh}, rule = ${ruleText}\n${out}`;
+}
+
+/* Stamp a list of [x, y] cells so the pattern's bounding box is centred. */
+function stampCentred(cells, w, h, pattern) {
+  const ox = Math.floor((w - pattern.w) / 2);
+  const oy = Math.floor((h - pattern.h) / 2);
+  for (const [px, py] of pattern.cells) {
+    const x = ox + px;
+    const y = oy + py;
+    if (x >= 0 && y >= 0 && x < w && y < h) cells[y * w + x] = 1;
+  }
+  return cells;
+}
+
+/* ==== UI ==== */
+
+const $ = (id) => document.getElementById(id);
+
+const canvas = $('life-canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+const spark = $('spark-canvas');
+const sctx = spark.getContext('2d');
+
+let W = 96;
+let H = 64;
+let cellPx = 8;
+let rule = parseRule('B3/S23');
+let wrap = true;
+let cells = new Uint8Array(W * H);
+let initial = null;          // snapshot for Reset
+let gen = 0;
+let running = false;
+let speed = 20;              // generations per second; 61 on the slider means "flat out"
+let history = [];            // population per generation
+let seen = new Map();        // state hash -> generation, for cycle detection
+let verdict = null;          // { period, at } once a repeat is found
+let imgData = null;
+
+function resizeGrid(w, h) {
+  W = w;
+  H = h;
+  canvas.width = W;
+  canvas.height = H;
+  imgData = ctx.createImageData(W, H);
+  cells = new Uint8Array(W * H);
+  applyCellSize();
+}
+
+function applyCellSize() {
+  canvas.style.width = `${W * cellPx}px`;
+  canvas.style.height = `${H * cellPx}px`;
+}
+
+function draw() {
+  const d = imgData.data;
+  for (let i = 0; i < cells.length; i++) {
+    const o = i * 4;
+    if (cells[i]) {
+      d[o] = 0x39; d[o + 1] = 0xff; d[o + 2] = 0x8f; d[o + 3] = 255;
+    } else {
+      d[o] = 0x07; d[o + 1] = 0x14; d[o + 2] = 0x12; d[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function drawSpark() {
+  const w = spark.width;
+  const h = spark.height;
+  sctx.fillStyle = 'rgba(0,0,0,0.35)';
+  sctx.fillRect(0, 0, w, h);
+  if (history.length < 2) return;
+  const max = Math.max(...history, 1);
+  const n = history.length;
+  sctx.strokeStyle = '#39ff8f';
+  sctx.lineWidth = 2;
+  sctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const x = n === 1 ? 0 : (i / (n - 1)) * (w - 2) + 1;
+    const y = h - 2 - (history[i] / max) * (h - 8);
+    if (i === 0) sctx.moveTo(x, y);
+    else sctx.lineTo(x, y);
+  }
+  sctx.stroke();
+  sctx.fillStyle = 'rgba(127,166,149,0.9)';
+  sctx.font = '11px Consolas, monospace';
+  sctx.fillText(`peak ${max}`, 6, 14);
+}
+
+function renderStats() {
+  const pop = population(cells);
+  const status = verdict
+    ? (verdict.period === 1 ? 'still life' : `oscillator, period ${verdict.period}`)
+    : running ? 'running' : 'paused';
+  const tiles = [
+    ['Generation', String(gen)],
+    ['Population', String(pop)],
+    ['Rule', rule.text],
+    ['Grid', `${W} × ${H}${wrap ? ' torus' : ''}`],
+    ['State', status],
+  ];
+  $('stat-host').innerHTML = tiles.map(([label, value]) => `
+    <div class="net-tile">
+      <div class="net-tile-label">${label}</div>
+      <div class="net-tile-value mono">${value}</div>
+    </div>`).join('');
+
+  const note = $('verdict-note');
+  if (verdict) {
+    note.textContent = verdict.period === 1
+      ? `Nothing changes any more: generation ${verdict.at} is identical to the one before it, so this is a still life.`
+      : `Generation ${verdict.at} repeats generation ${verdict.at - verdict.period} exactly — a period-${verdict.period} cycle. It will do this for ever.`;
+  } else if (population(cells) === 0 && gen > 0) {
+    note.textContent = `Everything died at generation ${gen}. Some rules do that from almost any start.`;
+  } else {
+    note.textContent = '';
+  }
+}
+
+function pushHistory() {
+  history.push(population(cells));
+  if (history.length > 1200) history = history.slice(-1200);
+}
+
+function noteState() {
+  if (verdict) return;
+  const h = hashGrid(cells);
+  const prev = seen.get(h);
+  if (prev !== undefined && prev !== gen) {
+    verdict = { period: gen - prev, at: gen };
+    return;
+  }
+  seen.set(h, gen);
+  if (seen.size > 400) {
+    // keep the map bounded; the oldest entries cannot start a short cycle
+    const cutoff = gen - 300;
+    for (const [k, v] of seen) if (v < cutoff) seen.delete(k);
+  }
+}
+
+function stepOnce() {
+  cells = stepGrid(cells, W, H, rule, wrap);
+  gen++;
+  pushHistory();
+  noteState();
+}
+
+function resetSeen() {
+  seen = new Map();
+  verdict = null;
+  noteState();
+}
+
+function renderAll() {
+  draw();
+  drawSpark();
+  renderStats();
+}
+
+/* ---- the run loop ---- */
+
+let lastTick = 0;
+let rafId = null;
+
+function loop(ts) {
+  rafId = requestAnimationFrame(loop);
+  if (!running) return;
+  if (speed > 60) {
+    // "flat out": as many generations as fit in a frame, capped so a big grid
+    // cannot lock the tab up
+    const budget = Math.max(1, Math.floor(120000 / (W * H)));
+    for (let i = 0; i < budget; i++) stepOnce();
+    renderAll();
+    return;
+  }
+  const interval = 1000 / speed;
+  if (ts - lastTick < interval) return;
+  lastTick = ts;
+  stepOnce();
+  renderAll();
+}
+
+function setRunning(on) {
+  running = on;
+  $('run-btn').innerHTML = on ? '&#10073;&#10073; Pause' : '&#9654; Run';
+  if (on) lastTick = 0;
+}
+
+/* ---- drawing on the grid ---- */
+
+let painting = null; // 1 to draw, 0 to erase
+
+function cellAt(ev) {
+  const r = canvas.getBoundingClientRect();
+  const p = ev.touches ? ev.touches[0] : ev;
+  const x = Math.floor(((p.clientX - r.left) / r.width) * W);
+  const y = Math.floor(((p.clientY - r.top) / r.height) * H);
+  if (x < 0 || y < 0 || x >= W || y >= H) return null;
+  return y * W + x;
+}
+
+function paint(ev) {
+  const i = cellAt(ev);
+  if (i == null || painting == null) return;
+  if (cells[i] !== painting) {
+    cells[i] = painting;
+    resetSeen();
+    renderAll();
+  }
+}
+
+canvas.addEventListener('pointerdown', (ev) => {
+  ev.preventDefault();
+  const i = cellAt(ev);
+  if (i == null) return;
+  painting = (ev.shiftKey || ev.button === 2) ? 0 : (cells[i] ? 0 : 1);
+  canvas.setPointerCapture(ev.pointerId);
+  paint(ev);
+});
+canvas.addEventListener('pointermove', (ev) => { if (painting != null) paint(ev); });
+canvas.addEventListener('pointerup', () => { painting = null; });
+canvas.addEventListener('pointercancel', () => { painting = null; });
+canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+/* ---- controls ---- */
+
+$('run-btn').addEventListener('click', () => setRunning(!running));
+$('step-btn').addEventListener('click', () => {
+  setRunning(false);
+  stepOnce();
+  renderAll();
+});
+$('clear-btn').addEventListener('click', () => {
+  setRunning(false);
+  cells = new Uint8Array(W * H);
+  gen = 0;
+  history = [];
+  initial = null;
+  resetSeen();
+  renderAll();
+});
+$('reset-btn').addEventListener('click', () => {
+  if (!initial) return;
+  setRunning(false);
+  cells = initial.slice();
+  gen = 0;
+  history = [population(cells)];
+  resetSeen();
+  renderAll();
+});
+
+function newSoup() {
+  const density = Number($('density-slider').value) / 100;
+  cells = new Uint8Array(W * H);
+  const rnd = new Uint32Array(W * H);
+  crypto.getRandomValues(rnd);
+  for (let i = 0; i < cells.length; i++) cells[i] = rnd[i] / 4294967296 < density ? 1 : 0;
+  gen = 0;
+  history = [population(cells)];
+  initial = cells.slice();
+  resetSeen();
+  renderAll();
+}
+$('soup-btn').addEventListener('click', newSoup);
+
+$('speed-slider').addEventListener('input', (e) => {
+  speed = Number(e.target.value);
+  $('speed-value').textContent = speed > 60 ? 'max' : String(speed);
+});
+$('cell-slider').addEventListener('input', (e) => {
+  cellPx = Number(e.target.value);
+  $('cell-value').textContent = String(cellPx);
+  applyCellSize();
+});
+$('density-slider').addEventListener('input', (e) => {
+  $('density-value').textContent = `${e.target.value}%`;
+});
+$('size-select').addEventListener('change', (e) => {
+  const [w, h] = e.target.value.split('x').map(Number);
+  setRunning(false);
+  const old = cells;
+  const ow = W;
+  const oh = H;
+  resizeGrid(w, h);
+  // keep whatever still fits, anchored at the top left
+  for (let y = 0; y < Math.min(oh, H); y++) {
+    for (let x = 0; x < Math.min(ow, W); x++) cells[y * W + x] = old[y * ow + x];
+  }
+  gen = 0;
+  history = [population(cells)];
+  initial = cells.slice();
+  resetSeen();
+  renderAll();
+});
+
+$('edge-select').addEventListener('change', (e) => {
+  wrap = e.target.value === 'wrap';
+  resetSeen();
+  renderStats();
+});
+
+function applyRule(text) {
+  const err = $('rule-error');
+  try {
+    rule = parseRule(text);
+    err.style.display = 'none';
+    resetSeen();
+    renderStats();
+    return true;
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+    return false;
+  }
+}
+$('rule-input').addEventListener('input', (e) => applyRule(e.target.value));
+
+$('rule-preset').innerHTML = '<option value="">— pick a rule —</option>'
+  + RULES.map((r, i) => `<option value="${i}">${r.name} — ${r.rule}</option>`).join('');
+$('rule-preset').addEventListener('change', (e) => {
+  const r = RULES[Number(e.target.value)];
+  if (!r) return;
+  $('rule-input').value = r.rule;
+  applyRule(r.rule);
+  e.target.value = '';
+});
+
+$('pattern-select').innerHTML = '<option value="">— pick a pattern —</option>'
+  + PATTERNS.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+$('pattern-select').addEventListener('change', (e) => {
+  const p = PATTERNS[Number(e.target.value)];
+  if (!p) return;
+  loadPattern(p);
+  e.target.value = '';
+});
+
+/* Load either a plaintext pattern ({plain}) or a parsed RLE ({w, h, cells}),
+   growing the grid first if the pattern would not fit inside it. */
+function loadPattern(p) {
+  setRunning(false);
+  if (p.rule && p.rule !== rule.text) {
+    $('rule-input').value = p.rule;
+    applyRule(p.rule);
+  }
+  const pat = p.plain ? cellsFromPlain(p.plain) : { w: p.w, h: p.h, cells: p.cells };
+  if (pat.w > W || pat.h > H) {
+    const opt = [...$('size-select').options].find((o) => {
+      const [w, h] = o.value.split('x').map(Number);
+      return w >= pat.w + 4 && h >= pat.h + 4;
+    });
+    if (opt) {
+      $('size-select').value = opt.value;
+      const [w, h] = opt.value.split('x').map(Number);
+      resizeGrid(w, h);
+    }
+  }
+  cells = stampCentred(new Uint8Array(W * H), W, H, pat);
+  gen = 0;
+  history = [population(cells)];
+  initial = cells.slice();
+  resetSeen();
+  renderAll();
+}
+
+/* ---- RLE ---- */
+
+$('rle-load-btn').addEventListener('click', () => {
+  const err = $('rle-error');
+  try {
+    const p = parseRLE($('rle-text').value);
+    if (p.rule) {
+      // an RLE header's rule wins, when it is one this page understands
+      try {
+        const r = parseRule(p.rule);
+        $('rule-input').value = r.text;
+        applyRule(r.text);
+      } catch (e) { /* a non-totalistic rule name: keep the current rule */ }
+    }
+    err.style.display = 'none';
+    loadPattern({ w: p.w, h: p.h, cells: p.cells });
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  }
+});
+
+$('rle-save-btn').addEventListener('click', () => {
+  $('rle-text').value = toRLE(cells, W, H, rule.text);
+  $('rle-error').style.display = 'none';
+});
+$('rle-copy-btn').addEventListener('click', async () => {
+  if (!$('rle-text').value.trim()) $('rle-text').value = toRLE(cells, W, H, rule.text);
+  try {
+    await navigator.clipboard.writeText($('rle-text').value);
+    const toast = $('copy-toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1200);
+  } catch (e) { /* clipboard blocked; the textarea is selectable */ }
+});
+
+/* ---- headless hook ------------------------------------------------------
+   Screenshot capture and the browser-side tests need to advance the world
+   without waiting on real time, and to read the grid back out. */
+window.__life = {
+  step(n = 1) { for (let i = 0; i < n; i++) stepOnce(); renderAll(); },
+  run(on) { setRunning(!!on); },
+  get gen() { return gen; },
+  get population() { return population(cells); },
+  get verdict() { return verdict; },
+  cells() { return Array.from(cells); },
+  setPattern(plain, ruleText) {
+    if (ruleText) { $('rule-input').value = ruleText; applyRule(ruleText); }
+    loadPattern({ plain, rule: ruleText || null });
+  },
+  setRule(text) { $('rule-input').value = text; applyRule(text); },
+  setWrap(on) { wrap = !!on; $('edge-select').value = on ? 'wrap' : 'dead'; resetSeen(); renderStats(); },
+  resize(w, h) { setRunning(false); resizeGrid(w, h); gen = 0; history = []; resetSeen(); renderAll(); },
+  rle() { return toRLE(cells, W, H, rule.text); },
+};
+
+/* ---- boot ---- */
+
+resizeGrid(W, H);
+loadPattern(PATTERNS.find((p) => p.name === 'Gosper glider gun'));
+setRunning(true);
+requestAnimationFrame(loop);
+</script>
+<!-- Slippy Deck: floating Slippy TV + jukebox player. Renders nothing unless admin.slippylabs.com/whoami confirms a signed-in account. -->
+<script defer src="https://slippylabs.com/deck/deck.js"></script>
+<!-- Slippy Labs sitewide privacy link. Self-contained on purpose: these sites
+     share no CSS, so it carries its own styles and inherits the page's text
+     colour instead of assuming a palette. position/z-index are load bearing --
+     the HUD theme's .starfield/.scanlines are fixed at z-index 0-1 and would
+     paint straight over an unpositioned footer.
+     The .page-wrap trim below is what keeps the bar on the first screen. -->
+<div class="sl-legal"><a href="https://slippylabs.com/privacy.html">Privacy</a></div>
+<style>
+.sl-legal{box-sizing:border-box;position:relative;z-index:3;height:64px;display:flex;align-items:center;justify-content:center;margin:0;padding:0 12px;font-family:"Consolas","SFMono-Regular",Menlo,Monaco,"Courier New",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.5}
+.sl-legal a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px}
+.sl-legal a:hover,.sl-legal a:focus-visible{text-decoration:underline;opacity:1}
+/* This page centres .page-wrap at min-height:100vh, which would push the bar a
+   whole screen below the fold. Give back exactly the bar height instead of
+   adding a scrollbar to a page that had none. */
+.page-wrap{min-height:calc(100vh - 64px)}
+</style>
+</body>
+</html>
